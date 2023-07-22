@@ -1,5 +1,8 @@
 # A Bare-Metal 80386 program in Cowgol
 
+![image](https://github.com/shadowofneptune/cowgol_bare_bones/assets/56777828/11c76f33-524f-4d59-b899-1d3619044417)
+
+
 This is the https://wiki.osdev.org/Bare_Bones tutorial, in the [Cowgol](https://github.com/davidgiven/cowgol) language. It represents the capabilities of the language and its toolchain as of commit [ec33ae1](https://github.com/davidgiven/cowgol/commit/ec33ae1293df3937c6397575a0f7defb5e3b4a4d). It consists of two main files:
 
  - ``boot.cow``: A small program that prints a Hello World message two different ways. Take a look at this program to see how Cowgol differs from C.
