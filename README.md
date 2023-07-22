@@ -1,4 +1,4 @@
-# A Bare-Metal Program 386 program in Cowgol
+# A Bare-Metal 80386 program in Cowgol
 
 This is the https://wiki.osdev.org/Bare_Bones tutorial, in the [Cowgol](https://github.com/davidgiven/cowgol) language. It represents the capabilities of the language and its toolchain as of commit [ec33ae1](https://github.com/davidgiven/cowgol/commit/ec33ae1293df3937c6397575a0f7defb5e3b4a4d). It consists of two main files:
 
