@@ -1,0 +1,78 @@
+const STACK_SIZE := 128;
+
+var workspaceSize: Size[NUM_WORKSPACES];
+
+sub E_nl() is
+	E_b8('\n');
+end sub;
+
+sub ArchAlignUp(value: Size, alignment: uint8): (newvalue: Size) is
+	newvalue := value;
+end sub;
+
+sub ArchEmitSubRef(subr: [Subroutine]) is
+	E_b8('f');
+	E_u16(subr.id);
+	E_b8('_');
+	E(subr.name);
+end sub;
+
+sub ArchEmitWSRef(wid: uint8, address: Size) is
+	E("ws+");
+	E_u16(address);
+end sub;
+
+sub ArchEmitHeader(coo: [Coo]) is
+	E("\t.set F_ALIGN,   0b01\n");
+	E("\t.set F_MEMINFO, 0b10\n");
+	E("\t.set FLAGS, F_ALIGN | F_MEMINFO\n");
+	E("\t.set MAGICNUM, 0x1BADB002\n");
+	E("\t.set CHECKSUM, -(MAGICNUM + FLAGS)\n\n");
+
+	E("\t.section .multiboot\n");
+	E("\t.align 4\n");
+	E("\t.long MAGICNUM\n");
+	E("\t.long FLAGS\n");
+	E("\t.long CHECKSUM\n");
+
+	E("\t.text\n\n");
+	E("\t.global _start\n");
+	E("_start:\n");
+	E("\tmov $STACK, %esp\n");
+
+
+	while coo != (0 as [Coo]) loop
+		var main := coo.index.subroutines[0];
+		if main != (0 as [Subroutine]) then
+			E("\tcall ");
+			ArchEmitSubRef(main);
+			E_nl();
+		end if;
+		coo := coo.next;
+	end loop;
+
+	E("\tcli\n");
+	E("_end:\thlt\n");
+	E("\tjmp _end\n");
+end sub;
+
+sub ArchEmitFooter(coo: [Coo]) is
+	E("\t.bss\n");
+	E("ws: .space ");
+	E_u16(workspaceSize[0]);
+	E_nl();
+	E("LOMEM: .space 0x4000\n");
+	E("HIMEM: .space 0x4000\n");
+	E("STACK:\n");
+
+	# This is ridiculous, but can't be helped: write spaces to pad the end
+	# of the file. Unix C compilers don't like trailing nuls.
+
+	var padding := FCBExt(&outfcb) - FCBPos(&outfcb);
+	while padding != 0 loop
+		E_b8(' ');
+		padding := padding - 1;
+	end loop;
+end sub;
+
+

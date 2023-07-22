@@ -1,0 +1,109 @@
+#An adaption of https://wiki.osdev.org/Bare_Bones into Cowgol, highlighting the
+#strengths of the language for this purpose over C.
+const VGA_BLUE := 1;
+const VGA_YELLOW := 14;
+const VGA_WIDTH := 80;
+const VGA_HEIGHT := 25;
+const CELL_COLOR := VGA_BLUE << 4 | VGA_YELLOW;
+const VGA_BUFFER := 0xB8000;
+const ERR_STR_NONULL := 1;
+var t_row: intptr := 0;
+var t_column: intptr := 0;
+
+typedef error is intptr;
+
+#Initializes terminal. Cell color is only going to be changed here, so it makes
+#sense to treat the buffer as a byte array.
+sub t_init() is
+	var y: intptr := 0;
+	var x: intptr;
+	while y < VGA_HEIGHT loop
+		x := 0;
+		while x < VGA_WIDTH loop
+			var offset := ((y * VGA_WIDTH + x) * 2) as [uint8];
+			[offset + VGA_BUFFER] := ' ';
+			[offset + VGA_BUFFER + 1] := CELL_COLOR;
+			x := x + 1;
+		end loop;
+		y := y + 1;
+	end loop;
+end sub;
+
+sub t_putentryat(c: uint8, x: intptr, y: intptr) is
+	var offset := ((y * VGA_WIDTH + x) * 2) as [uint8];
+	[offset + VGA_BUFFER] := c;
+end sub;
+
+sub t_putchar(c: uint8) is
+	var r := t_row;
+	if c != '\n' then
+		t_putentryat(c, t_column, t_row);
+		t_column := t_column + 1;
+		if t_column == VGA_WIDTH then
+			t_column := 0;
+			t_row := t_row + 1;
+		end if;
+	else
+		t_column := 0;
+		t_row := t_row + 1;
+	end if;
+
+	if t_row > r and t_row == VGA_HEIGHT then
+		t_row := 0;
+	end if;
+end sub;
+
+sub t_write(data: [uint8], size: intptr) is
+	var i: intptr := 0;
+	while i < size loop
+		t_putchar([data + i]);
+		i := i + 1;
+	end loop;
+end sub;
+
+
+sub strlen(str: [uint8], max: intptr): (len: intptr, err: error) is
+	len := 0;
+	err := 0;
+	while [str + len] != 0 loop
+		len := len + 1;
+		if len > max then
+			err := ERR_STR_NONULL;
+			break;
+		end if;
+	end loop;
+end sub;
+
+
+#Start of real work.
+
+t_init();
+
+# Two examples:
+# Arrays are a proper type in Cowgol. This initialization is painful, but has
+# an advantage. This produces an array in the data segment, which is mutable.
+var str: uint8[] := {
+	'H', 'e', 'l', 'l', 'o', ',', ' ', 'k', 'e', 'r', 'n', 'e', 'l', ' ',
+	'W', 'o', 'r', 'l', 'd', '!', '\n'
+};
+
+# the size of arrays is known by the compiler. Useful for buffers or
+# string manipulation.
+t_write(&str[0], @sizeof str);
+
+# This on the other hand produces an entry in the text segment. It's read-only.
+var str2 := "Hello, kernel world!";
+
+# Currently @sizeof only works on arrays. Cowgol string constants are null terminated
+# though, so strlen() can be used here.
+
+var len: intptr;
+var err: error;
+(len, err) := strlen(str2, 0x1000);
+
+if err == 0 then
+		#Golang btw really should go with err == nil instead of !=.
+		#Like comedy, branch predictors work better with 'yes, and'
+		#rather than 'no, but.'
+	t_write(str2, len);
+end if;
